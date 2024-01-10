@@ -1,0 +1,102 @@
+version: '3.8' # docker version
+# uitleg ports: {port intern}:{port protocol} e.g. 8081:80 betekent port 8081 intern, port 80 (http) protocol. WordPress en PhpMyAdmin gebruiken port 9000 (standard TCP). 
+# uitleg NGINX environments: waardes komen uit .env, in ./nginx.sites-enabled/wordpress.conf.template worden de waardes uitgelezen door NGINX en geconfigureerd volgens https://hub.docker.com/_/nginx, ref. "Using environment variables in nginx configuration (new in 1.19)"
+
+services:
+### NGINX ################################################
+  nginx:
+    image: nginx:${NGINX_VERSION:-latest}
+    container_name: ${PROJECT_name}_nginx
+    ports:
+      - 80:80     
+      - 443:443   
+    environment:
+      - WEB_URL=${WEB_URL}
+      - WP_CERTIFICATE=${WORDPRESS_CERTIFICATE}
+      - WP_CERTIFICATE_KEY=${WORDPRESS_CERTIFICATE_KEY}
+    volumes:
+      - ${WORDPRESS_DATA_DIR:-./data/wordpress}:/var/www/html
+      - phpmyadmin_data:/var/www/phpmyadmin
+      - ./nginx/sites-enabled:/etc/nginx/templates
+      - ./nginx/certs/:/etc/nginx/certs/
+      - ./data/log/nginx/:/var/log/nginx/
+    depends_on:
+      - wordpress
+      - phpmyadmin
+    restart: always 
+
+### MySQL ################################################
+  mysql:
+    image: mariadb:${MARIADB_VERSION:-latest}
+    container_name: ${PROJECT_name}_database
+    volumes:
+      - database_data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MYSQL_USER=${WORDPRESS_DB_USER:-root}
+      - MYSQL_PASSWORD=${WORDPRESS_DB_PASSWORD:-password}
+      - MYSQL_DATABASE=${WORDPRESS_DB_NAME:-wordpress}
+    ports:
+      - ${MYSQL_PORT:-3306}:3306
+    restart: always
+
+# APPLICATIONS
+### WordPress ################################################
+  wordpress:
+    image: wordpress:${WORDPRESS_VERSION:-latest}
+    container_name: ${PROJECT_name}_fpm
+    environment:
+      - WORDPRESS_DB_NAME=${WORDPRESS_DB_NAME:-wordpress}
+      - WORDPRESS_DB_HOST=mysql:3306
+      - WORDPRESS_DB_USER=${WORDPRESS_DB_USER:-root}
+      - WORDPRESS_DB_PASSWORD=${WORDPRESS_DB_PASSWORD:-password}
+      - WORDPRESS_TABLE_PREFIX=${WORDPRESS_TABLE_PREFIX:-wp_}
+      - WORDPRESS_DEBUG=${WORDPRESS_DEBUG:-0}
+      - VIRTUAL_HOST=${WEB_URL}
+    volumes:
+      - ${WORDPRESS_DATA_DIR:-./data/wordpress}:/var/www/html
+    ports:
+      - ${WORDPRESS_PORT}:9000
+    depends_on:
+      - mysql
+      - phpmyadmin
+    restart: always
+
+### WordPress CLI ################################################
+  wpcli:
+    image: wordpress:cli
+    container_name: ${PROJECT_name}_wpcli
+    environment:
+      - WORDPRESS_DB_NAME=${WORDPRESS_DB_NAME:-wordpress}
+      - WORDPRESS_DB_HOST=mysql:3306
+      - WORDPRESS_DB_USER=${WORDPRESS_DB_USER:-root}
+      - WORDPRESS_DB_PASSWORD=${WORDPRESS_DB_PASSWORD:-password}
+      - WORDPRESS_TABLE_PREFIX=${WORDPRESS_TABLE_PREFIX:-wp_}
+    volumes:
+      - ${WORDPRESS_DATA_DIR:-./data/wordpress}:/var/www/html
+    working_dir: /var/www/html
+    depends_on:
+      - wordpress
+    restart: always
+
+### PhpMyAdmin ################################################
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:${PHPMYADMIN_VERSION:-latest}
+    container_name: ${PROJECT_name}_phpmyadmin
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_ABSOLUTE_URI: https://${WEB_URL}/phpmyadmin/
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-password}
+      UPLOAD_LIMIT: 2G
+    ports:
+      - ${PHPMYADMIN_PORT-8080}:80
+    volumes:
+      - phpmyadmin_data:/usr/src/phpmyadmin
+    restart: always
+
+# VOLUMES
+volumes:
+  database_data: 
+  phpmyadmin_data: 

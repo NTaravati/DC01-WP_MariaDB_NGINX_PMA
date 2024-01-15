@@ -15,7 +15,7 @@ services:
       - WP_CERTIFICATE=${WORDPRESS_CERTIFICATE}
       - WP_CERTIFICATE_KEY=${WORDPRESS_CERTIFICATE_KEY}
     volumes:
-      - ${WORDPRESS_DATA_DIR:-./data/wordpress}:/var/www/html
+      - wordpress_data:/var/www/html
       - phpmyadmin_data:/var/www/phpmyadmin
       - ./nginx/sites-enabled:/etc/nginx/templates
       - ./nginx/certs/:/etc/nginx/certs/
@@ -29,6 +29,19 @@ services:
   mysql:
     image: mariadb:${MARIADB_VERSION:-latest}
     container_name: ${PROJECT_name}_database
+    command: 
+      --character-set-server=utf8mb4 
+      --collation-server=utf8mb4_unicode_ci 
+      --innodb-buffer-pool-size=512M
+      --key_buffer_size=512M
+      --max_allowed_packet=128M
+      --max_connections=1500
+      --query_cache_size=0
+      --query_cache_type=0
+      --sort_buffer_size=4M
+      --table_open_cache=400
+      --thread_cache_size=10
+      --tmp_table_size=128M
     volumes:
       - database_data:/var/lib/mysql
     environment:
@@ -54,7 +67,7 @@ services:
       - WORDPRESS_DEBUG=${WORDPRESS_DEBUG:-0}
       - VIRTUAL_HOST=${WEB_URL}
     volumes:
-      - ${WORDPRESS_DATA_DIR:-./data/wordpress}:/var/www/html
+      - wordpress_data:/var/www/html
     ports:
       - ${WORDPRESS_PORT}:9000
     depends_on:
@@ -73,7 +86,7 @@ services:
       - WORDPRESS_DB_PASSWORD=${WORDPRESS_DB_PASSWORD:-password}
       - WORDPRESS_TABLE_PREFIX=${WORDPRESS_TABLE_PREFIX:-wp_}
     volumes:
-      - ${WORDPRESS_DATA_DIR:-./data/wordpress}:/var/www/html
+      - wordpress_data:/var/www/html
     working_dir: /var/www/html
     depends_on:
       - wordpress
@@ -100,3 +113,10 @@ services:
 volumes:
   database_data: 
   phpmyadmin_data: 
+  wordpress_data:
+    driver: local 
+    driver_opts:
+      type: none
+      device: ${WORDPRESS_DATA_DIR:-./data/wordpress}
+      o: bind
+  #  - ${WORDPRESS_DATA_DIR:-./data/wordpress}:/var/www/html

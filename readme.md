@@ -17,3 +17,13 @@ WordPress FPM (latest)
 WordPress CLI (latest)
 MariaDB (latest)
 PhpMyAdmin (latest)
+
+The docker-compose.yml is tested in Windows 11 and Linux Ubuntu 22.04 LTS.
+
+#### 1.2 Start-up script
+
+To run docker, enter the following command in your command prompt:
+
+```
+wsl docker-compose -f "docker-compose.yml" up -d --build
+```

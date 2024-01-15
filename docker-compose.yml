@@ -6,7 +6,7 @@ services:
 ### NGINX ################################################
   nginx:
     image: nginx:${NGINX_VERSION:-latest}
-    container_name: ${PROJECT_name}_nginx
+    container_name: ${PROJECT_name:-WP1}-nginx
     ports:
       - 80:80     
       - 443:443   
@@ -28,7 +28,7 @@ services:
 ### MySQL ################################################
   mysql:
     image: mariadb:${MARIADB_VERSION:-latest}
-    container_name: ${PROJECT_name}_database
+    container_name: ${PROJECT_name:-WP1}database
     command: 
       --character-set-server=utf8mb4 
       --collation-server=utf8mb4_unicode_ci 
@@ -57,17 +57,18 @@ services:
 ### WordPress ################################################
   wordpress:
     image: wordpress:${WORDPRESS_VERSION:-latest}
-    container_name: ${PROJECT_name}_fpm
+    container_name: ${PROJECT_name:-WP1}fpm
     environment:
+      - VIRTUAL_HOST=${WEB_URL}
       - WORDPRESS_DB_NAME=${WORDPRESS_DB_NAME:-wordpress}
       - WORDPRESS_DB_HOST=mysql:3306
       - WORDPRESS_DB_USER=${WORDPRESS_DB_USER:-root}
       - WORDPRESS_DB_PASSWORD=${WORDPRESS_DB_PASSWORD:-password}
       - WORDPRESS_TABLE_PREFIX=${WORDPRESS_TABLE_PREFIX:-wp_}
-      - WORDPRESS_DEBUG=${WORDPRESS_DEBUG:-0}
-      - VIRTUAL_HOST=${WEB_URL}
+      - WORDPRESS_DEBUG=${WORDPRESS_DEBUG:-1}
     volumes:
       - wordpress_data:/var/www/html
+      - ./nginx/php.ini:/usr/local/etc/php/conf.d/uploads.ini
     ports:
       - ${WORDPRESS_PORT}:9000
     depends_on:
@@ -78,7 +79,7 @@ services:
 ### WordPress CLI ################################################
   wpcli:
     image: wordpress:cli
-    container_name: ${PROJECT_name}_wpcli
+    container_name: ${PROJECT_name:-WP1}wpcli
     environment:
       - WORDPRESS_DB_NAME=${WORDPRESS_DB_NAME:-wordpress}
       - WORDPRESS_DB_HOST=mysql:3306
@@ -95,7 +96,7 @@ services:
 ### PhpMyAdmin ################################################
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:${PHPMYADMIN_VERSION:-latest}
-    container_name: ${PROJECT_name}_phpmyadmin
+    container_name: ${PROJECT_name:-WP1}phpmyadmin
     depends_on:
       - mysql
     environment:
@@ -119,4 +120,3 @@ volumes:
       type: none
       device: ${WORDPRESS_DATA_DIR:-./data/wordpress}
       o: bind
-  #  - ${WORDPRESS_DATA_DIR:-./data/wordpress}:/var/www/html
